@@ -1,0 +1,60 @@
+{
+  "name": "@devqxi/pubdev-mcp-server",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for pub.dev - Access Dart and Flutter package information, search, version management, and documentation",
+  "type": "module",
+  "main": "dist/pubdev-mcp.js",
+  "bin": {
+    "pubdev-mcp-server": "dist/pubdev-mcp.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/pubdev-mcp.js",
+    "dev": "tsc && node dist/pubdev-mcp.js",
+    "prepublishOnly": "npm run build",
+    "test": "node test/quick-test.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "pub.dev",
+    "dart",
+    "flutter",
+    "package-manager",
+    "api",
+    "claude",
+    "ai-tools"
+  ],
+  "author": {
+    "name": "devqxi",
+    "url": "https://github.com/devqxi"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devqxi/pubdev-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/devqxi/pubdev-mcp-server/issues"
+  },
+  "homepage": "https://github.com/devqxi/pubdev-mcp-server#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
