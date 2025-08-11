@@ -3,6 +3,10 @@
 A **Model Context Protocol (MCP)** server for [pub.dev](https://pub.dev), the official package repository for Dart and Flutter.  
 It allows AI assistants to **search**, **analyze**, and **retrieve** detailed information about Dart/Flutter packages.
 
+<a href="https://glama.ai/mcp/servers/@devqxi/pubdev-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@devqxi/pubdev-mcp-server/badge" alt="Pub.dev Server MCP server" />
+</a>
+
 ---
 
 ## ✨ Features
