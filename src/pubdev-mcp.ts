@@ -269,8 +269,17 @@ class PubDevMCPServer {
   }
 
   private async getPackageInfo(packageName: string) {
-    const url = `https://pub.dev/api/packages/${packageName}`;
-    const data = await this.fetchWithCache<any>(url, `package-${packageName}`);
+    // Fetch package info and score in parallel
+    const [data, scoreData] = await Promise.all([
+      this.fetchWithCache<any>(
+        `https://pub.dev/api/packages/${packageName}`,
+        `package-${packageName}`
+      ),
+      this.fetchWithCache<any>(
+        `https://pub.dev/api/packages/${packageName}/score`,
+        `score-${packageName}`
+      )
+    ]);
 
     const packageInfo: PackageInfo = {
       name: data.name,
@@ -290,9 +299,9 @@ class PubDevMCPServer {
           text: JSON.stringify({
             package: packageInfo,
             stats: {
-              likes: data.likes,
-              points: data.points,
-              popularity: data.popularity
+              likes: scoreData.likeCount,
+              points: scoreData.grantedPoints,
+              popularity: scoreData.downloadCount30Days
             },
             publishers: data.publishers,
             uploaders: data.uploaders
@@ -305,10 +314,10 @@ class PubDevMCPServer {
   private async checkPackageUpdates(packageName: string, currentVersion?: string) {
     const url = `https://pub.dev/api/packages/${packageName}`;
     const data = await this.fetchWithCache<any>(url, `package-${packageName}`);
-    
+
     const latestVersion = data.latest.version;
     const latestPublished = data.latest.published;
-    
+
     let updateStatus = {
       packageName,
       currentVersion: currentVersion || 'unknown',
@@ -320,16 +329,13 @@ class PubDevMCPServer {
 
     if (currentVersion) {
       updateStatus.updateAvailable = this.compareVersions(currentVersion, latestVersion) < 0;
-      
-      // Get version history to count versions behind
-      const versionsUrl = `https://pub.dev/api/packages/${packageName}/versions`;
-      const versionsData = await this.fetchWithCache<any>(versionsUrl, `versions-${packageName}`);
-      
-      const currentIndex = versionsData.versions.findIndex((v: any) => v.version === currentVersion);
-      const latestIndex = versionsData.versions.findIndex((v: any) => v.version === latestVersion);
-      
+
+      // Versions are already included in the main package response
+      const currentIndex = data.versions.findIndex((v: any) => v.version === currentVersion);
+      const latestIndex = data.versions.findIndex((v: any) => v.version === latestVersion);
+
       if (currentIndex > -1 && latestIndex > -1) {
-        updateStatus.versionsBehind = currentIndex - latestIndex;
+        updateStatus.versionsBehind = latestIndex - currentIndex;
       }
     }
 
@@ -344,10 +350,14 @@ class PubDevMCPServer {
   }
 
   private async getPackageVersions(packageName: string, limit: number = 10) {
-    const url = `https://pub.dev/api/packages/${packageName}/versions`;
-    const data = await this.fetchWithCache<any>(url, `versions-${packageName}`);
-    
-    const versions: PackageVersion[] = data.versions
+    // Versions are included in the main package endpoint
+    const url = `https://pub.dev/api/packages/${packageName}`;
+    const data = await this.fetchWithCache<any>(url, `package-${packageName}`);
+
+    // Versions are sorted oldest-first in the API, reverse to show newest first
+    const allVersions = [...data.versions].reverse();
+
+    const versions: PackageVersion[] = allVersions
       .slice(0, limit)
       .map((v: any) => ({
         version: v.version,
@@ -442,8 +452,9 @@ class PubDevMCPServer {
   }
 
   private async comparePackageVersions(packageName: string, fromVersion: string, toVersion: string) {
-    const versionsUrl = `https://pub.dev/api/packages/${packageName}/versions`;
-    const data = await this.fetchWithCache<any>(versionsUrl, `versions-${packageName}`);
+    // Versions are included in the main package endpoint
+    const url = `https://pub.dev/api/packages/${packageName}`;
+    const data = await this.fetchWithCache<any>(url, `package-${packageName}`);
     
     const fromVersionData = data.versions.find((v: any) => v.version === fromVersion);
     const toVersionData = data.versions.find((v: any) => v.version === toVersion);
@@ -496,24 +507,47 @@ class PubDevMCPServer {
       sort: sort,
       page: page.toString()
     });
-    
+
     const url = `https://pub.dev/api/search?${params}`;
     const data = await this.fetchWithCache<any>(url, `search-${query}-${sort}-${page}`);
-    
+
+    // The search API only returns package names, fetch details and score for each
+    const packageDetails = await Promise.all(
+      data.packages.slice(0, 10).map(async (pkg: any) => {
+        try {
+          // Fetch both package info and score in parallel
+          const [packageInfo, scoreInfo] = await Promise.all([
+            this.fetchWithCache<any>(
+              `https://pub.dev/api/packages/${pkg.package}`,
+              `package-${pkg.package}`
+            ),
+            this.fetchWithCache<any>(
+              `https://pub.dev/api/packages/${pkg.package}/score`,
+              `score-${pkg.package}`
+            )
+          ]);
+
+          return {
+            name: packageInfo.name,
+            version: packageInfo.latest.version,
+            description: packageInfo.latest.pubspec?.description,
+            points: scoreInfo.grantedPoints,
+            likes: scoreInfo.likeCount,
+            popularity: scoreInfo.downloadCount30Days,
+            publishedAt: packageInfo.latest.published
+          };
+        } catch (error) {
+          console.error(`Failed to fetch details for ${pkg.package}:`, error);
+          return null;
+        }
+      })
+    );
+
     const results = {
       query,
       sort,
       page,
-      totalResults: data.count,
-      packages: data.packages.map((pkg: any) => ({
-        name: pkg.package,
-        version: pkg.latest.version,
-        description: pkg.latest.pubspec?.description,
-        points: pkg.points,
-        likes: pkg.likes,
-        popularity: pkg.popularity,
-        publishedAt: pkg.latest.published
-      }))
+      packages: packageDetails.filter(p => p !== null)
     };
 
     return {
