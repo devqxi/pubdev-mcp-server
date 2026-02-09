@@ -130,7 +130,7 @@ npx @modelcontextprotocol/inspector npx @devqxi/pubdev-mcp-server
 ## 🌐 API Reference
 - `https://pub.dev/api/packages/{package}`
 - `https://pub.dev/api/search`
-- `https://pub.dev/api/packages/{package}/versions`
+- `https://pub.dev/api/packages/{package}/score`
 - `https://pub.dev/packages/{package}/{version}/{doc-type}`
 
 ---
@@ -165,8 +165,15 @@ MIT – See [LICENSE](LICENSE)
 ---
 
 ## 🆕 Changelog
+**v1.0.1**
+- Fix: Use `/api/packages/{name}` instead of removed `/api/packages/{name}/versions` endpoint
+- Fix: Fetch package stats (likes, points, popularity) from `/score` endpoint
+- Fix: Search now fetches package details and scores individually (search API no longer returns inline data)
+- Fix: Correct `versionsBehind` calculation in `check_package_updates`
+- Improvement: `get_package_versions` now returns newest versions first
+
 **v1.0.0**
-- Initial release  
-- All major pub.dev API endpoints supported  
-- Caching & error handling implemented  
-- Full MCP protocol compliance  
+- Initial release
+- All major pub.dev API endpoints supported
+- Caching & error handling implemented
+- Full MCP protocol compliance
